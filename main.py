@@ -1,12 +1,14 @@
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
+from telegram.ext import (
+    ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
+)
 import json
 import os
 
-# 🔐 Твой токен (НЕ публикуй его в открытом доступе!)
+# 🔐 Токен бота
 TOKEN = "7934050267:AAGteJFHVm1108ffap66G84dXIsVQUWSfUo"
 
-# 👤 Твой Telegram user ID — только ты можешь управлять ботом
+# 👤 Твой Telegram ID — только ты админ
 ADMIN_ID = 8113864156
 
 # 📁 Файл со списком плохих слов
@@ -27,40 +29,45 @@ def save_bad_words(words):
 
 
 async def censor(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bad_words = load_bad_words()
-    message_text = update.message.text.lower()
-    if any(word in message_text for word in bad_words):
-        try:
-            await update.message.delete()
-        except Exception as e:
-            print(f"Ошибка при удалении сообщения: {e}")
+    if update.message and update.message.text:
+        bad_words = load_bad_words()
+        text = update.message.text.lower()
+        if any(word in text for word in bad_words):
+            try:
+                await update.message.delete()
+                print(f"Удалено сообщение: {update.message.text}")
+            except Exception as e:
+                print(f"Ошибка при удалении: {e}")
 
 
 async def add_word(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     if not context.args:
-        await update.message.reply_text("Укажи слово, которое добавить.")
+        await update.message.reply_text("Укажи слово для добавления.")
         return
     word = context.args[0].lower()
     bad_words = load_bad_words()
     if word not in bad_words:
         bad_words.append(word)
         save_bad_words(bad_words)
-        await update.message.reply_text(f"Слово '{word}' добавлено в список.")
+        await update.message.reply_text(f"Слово '{word}' добавлено.")
     else:
-        await update.message.reply_text(f"Слово уже есть в списке.")
+        await update.message.reply_text("Это слово уже есть в списке.")
 
 
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     words = load_bad_words()
-    await update.message.reply_text("Запрещённые слова:\n" + "\n".join(words))
+    if words:
+        await update.message.reply_text("Запрещённые слова:\n" + "\n".join(words))
+    else:
+        await update.message.reply_text("Список пуст.")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Бот-цензор активен. Я удаляю сообщения с плохими словами.")
+    await update.message.reply_text("Я бот-цензор. Удаляю плохие слова из чата.")
 
 
 def main():
@@ -69,7 +76,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("addword", add_word))
     app.add_handler(CommandHandler("badwords", list_words))
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), censor))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, censor))
 
     print("Бот запущен.")
     app.run_polling()
