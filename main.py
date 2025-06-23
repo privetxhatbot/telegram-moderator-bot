@@ -1,7 +1,6 @@
-import os
 import json
 import logging
-import re
+import os
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
@@ -32,37 +31,6 @@ def save_bad_words(bad_words):
 
 bad_words = load_bad_words()
 
-# Команды
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("🤖 Бот активен и готов модерировать чат!")
-
-def add_word(update: Update, context: CallbackContext):
-    if context.args:
-        word = context.args[0].lower()
-        bad_words.add(word)
-        save_bad_words(bad_words)
-        update.message.reply_text(f"✅ Слово '{word}' добавлено в бан-лист.")
-    else:
-        update.message.reply_text("❗ Укажи слово для добавления.")
-
-def remove_word(update: Update, context: CallbackContext):
-    if context.args:
-        word = context.args[0].lower()
-        bad_words.discard(word)
-        save_bad_words(bad_words)
-        update.message.reply_text(f"🗑️ Слово '{word}' удалено из бан-листа.")
-    else:
-        update.message.reply_text("❗ Укажи слово для удаления.")
-
-def list_words(update: Update, context: CallbackContext):
-    if update.effective_user.id not in ADMIN_IDS:
-        return
-    if bad_words:
-        words_list = "\n".join(f"• {w}" for w in sorted(bad_words))
-        update.message.reply_text(f"📋 Список запрещённых слов:\n{words_list}")
-    else:
-        update.message.reply_text("📭 Список запрещённых слов пуст.")
-
 # Модерация сообщений
 def moderate(update: Update, context: CallbackContext):
     message = update.message.text.lower()
@@ -72,6 +40,41 @@ def moderate(update: Update, context: CallbackContext):
             logger.info("Удалено сообщение: %s", update.message.text)
         except Exception as e:
             logger.error("Ошибка удаления: %s", e)
+
+# Команды
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("🤖 Бот активен и готов модерировать чат!")
+
+def add_word(update: Update, context: CallbackContext):
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    if context.args:
+        word = context.args[0].lower()
+        bad_words.add(word)
+        save_bad_words(bad_words)
+        update.message.reply_text(f"✅ Слово '{word}' добавлено в бан-лист.")
+    else:
+        update.message.reply_text("❗️Укажи слово для добавления.")
+
+def remove_word(update: Update, context: CallbackContext):
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    if context.args:
+        word = context.args[0].lower()
+        bad_words.discard(word)
+        save_bad_words(bad_words)
+        update.message.reply_text(f"🗑 Слово '{word}' удалено из бан-листа.")
+    else:
+        update.message.reply_text("❗️Укажи слово для удаления.")
+
+def list_words(update: Update, context: CallbackContext):
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    if bad_words:
+        words_list = "\n".join(f"• {w}" for w in sorted(bad_words))
+        update.message.reply_text(f"📋 Список запрещённых слов:\n{words_list}")
+    else:
+        update.message.reply_text("📪 Список запрещённых слов пуст.")
 
 # Главная функция запуска бота
 def main():
